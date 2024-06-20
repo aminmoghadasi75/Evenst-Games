@@ -22,8 +22,6 @@ for file in [USER_DATA_FILE, EVENT_DATA_FILE, REGISTRATION_DATA_FILE, MESSAGES_D
     if not os.path.exists(file):
         if file == USER_DATA_FILE:
             df = pd.DataFrame(columns=['ID', 'Name', 'Last Name', 'Mobile Number', 'Telegram ID', 'Username', 'Password'])
-        elif file == EVENT_DATA_FILE:
-            df = pd.DataFrame(columns=['EventID', 'Event Name', 'Date', 'Time', 'Day', 'Max Volunteers', 'Reserve Capacity'])
         elif file == REGISTRATION_DATA_FILE:
             df = pd.DataFrame(columns=['UserID', 'EventID', 'Status'])
         elif file == MESSAGES_DATA_FILE:
@@ -32,6 +30,9 @@ for file in [USER_DATA_FILE, EVENT_DATA_FILE, REGISTRATION_DATA_FILE, MESSAGES_D
             df = pd.DataFrame(columns=['UserID', 'Filename', 'FileData', 'FromAdmin'])
         elif file == CONTACT_DATA_FILE:
             df = pd.DataFrame(columns=['UserID', 'Subject', 'Message'])
+        elif file == EVENT_DATA_FILE:
+            df = pd.DataFrame(columns=['EventID', 'Event Name', 'Date', 'Time', 'Day', 'Location', 'Description', 'Max Volunteers', 'Reserve Capacity'])
+
         df.to_csv(file, index=False)
 
 # Utility functions
@@ -71,7 +72,7 @@ def sign_up():
     with st.form(key='sign_up_form'):
         name = st.text_input("Name", key="name")
         last_name = st.text_input("Last Name", key="last_name")
-        mobile_number = st.text_input("Mobile Number", key="mobile_number").replace(",", "")
+        mobile_number = st.text_input("Mobile Number (Optional)", key="mobile_number").replace(",", "").strip()
         telegram_id = st.text_input("Telegram ID", key="telegram_id")
         username = st.text_input("Username", key="username")
         password = st.text_input("Password", type="password", key="password")
@@ -79,7 +80,7 @@ def sign_up():
         submit_button = st.form_submit_button(label='Sign Up')
 
     if submit_button:
-        if name and last_name and mobile_number and telegram_id and username and password:
+        if name and last_name  and telegram_id and username and password:
             if username_exists(username):
                 st.error("Username already exists. Please choose a different username.")
             else:
@@ -89,7 +90,7 @@ def sign_up():
                     'ID': str(user_id),
                     'Name': str(name),
                     'Last Name': str(last_name),
-                    'Mobile Number': str(mobile_number),
+                    'Mobile Number': str(mobile_number) if mobile_number else None,
                     'Telegram ID': str(telegram_id),
                     'Username': str(username),
                     'Password': str(password)
@@ -111,7 +112,7 @@ def login():
     password = st.text_input("Password", type="password", key="login_password")
 
     if st.button("Login", key="login_button"):
-        if username == "admin" and password == "admin":
+        if username == "admin" and password == "admin": #180465
             st.session_state['logged_in'] = True
             st.session_state['is_admin'] = True
             st.session_state['username'] = "admin"  # Set username for admin
@@ -145,6 +146,7 @@ def admin_panel():
     tabs = st.tabs(["Create Event 🎉", "View Registered Users 📋", "Remove Event ❌", "View All Users 👥", "User Messages ✉️", "File Exchange 📂"])
 
     # Create Event tab
+     # Create Event tab
     with tabs[0]:
         st.subheader("Create Event 🎉")
         with st.form(key='create_event_form'):
@@ -152,26 +154,33 @@ def admin_panel():
             event_date = st.date_input("Event Date", key="event_date", min_value=datetime.today())
             event_time = st.time_input("Event Time", key="event_time")
             event_day = st.selectbox("Event Day", ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], key="event_day")
+            location = st.text_input("Event Location (Google Maps Link)", key="event_location")
+            description = st.text_area("Event Description", key="event_description")
             max_volunteers = st.number_input("Max Volunteers", min_value=1, step=1, key="max_volunteers")
             reserve_capacity = st.number_input("Reserve Capacity", min_value=1, step=1, key="reserve_capacity")
 
             create_event_button = st.form_submit_button(label='Create Event')
 
         if create_event_button:
-            if event_name and event_date and event_time and event_day and max_volunteers and reserve_capacity:
+            if event_name and event_date and event_time and event_day and location and description and max_volunteers and reserve_capacity:
                 events = load_data(EVENT_DATA_FILE)
-                event_id = len(events) + 1
-                event_data = {
-                    'EventID': event_id,
-                    'Event Name': event_name,
-                    'Date': event_date,
-                    'Time': event_time,
-                    'Day': event_day,
-                    'Max Volunteers': max_volunteers,
-                    'Reserve Capacity': reserve_capacity
-                }
-                save_data(EVENT_DATA_FILE, pd.concat([events, pd.DataFrame([event_data])], ignore_index=True))
-                st.success("Event created successfully! 🎉")
+                if event_name in events['Event Name'].values:
+                    st.error("Event name already exists. Please choose a different event name.")
+                else:
+                    event_id = len(events) + 1
+                    event_data = {
+                        'EventID': event_id,
+                        'Event Name': event_name,
+                        'Date': event_date,
+                        'Time': event_time,
+                        'Day': event_day,
+                        'Location': location,
+                        'Description': description,
+                        'Max Volunteers': max_volunteers,
+                        'Reserve Capacity': reserve_capacity
+                    }
+                    save_data(EVENT_DATA_FILE, pd.concat([events, pd.DataFrame([event_data])], ignore_index=True))
+                    st.success("Event created successfully! 🎉")
             else:
                 st.error("Please fill out all fields.")
 
@@ -215,7 +224,7 @@ def admin_panel():
     with tabs[3]:
         st.subheader("All Users 👥")
         users = load_data(USER_DATA_FILE)
-        st.write(users[['ID', 'Name', 'Last Name', 'Mobile Number', 'Telegram ID', 'Username']])
+        st.write(users[['ID', 'Name', 'Last Name', 'Mobile Number', 'Telegram ID', 'Username', 'Password']])
 
     # User Messages tab
     # User Messages tab
@@ -293,11 +302,11 @@ def admin_panel():
                 save_data(FILES_DATA_FILE, files)
                 st.success("File sent successfully!")
     # User panel
+# User panel
 def user_panel():
-    
     st.title("User Panel 🎨")
 
-    tabs = st.tabs(["View Events 📅", "My Registrations 🗂️", "Messages ✉️", "Contact Admin 📧", "File Exchange 📂"])
+    tabs = st.tabs(["View Events 📅", "My Registrations 🗂️", "Messages From Admin ✉️", "Contact Admin 📧", "File Exchange 📂"])
 
     # View Events tab
     with tabs[0]:
@@ -311,6 +320,8 @@ def user_panel():
             with st.expander(f"{event['Event Name']} on {event['Date']}"):
                 st.write(f"**Time:** {event['Time']}")
                 st.write(f"**Day:** {event['Day']}")
+                st.write(f"**Location:** {event['Location']}")
+                st.write(f"**Description:** {event['Description']}")
                 st.write(f"**Max Volunteers:** {event['Max Volunteers']}")
                 st.write(f"**Reserve Capacity:** {event['Reserve Capacity']}")
 
@@ -357,6 +368,8 @@ def user_panel():
                         st.write(f"**Date:** {event_info['Date']}")
                         st.write(f"**Time:** {event_info['Time']}")
                         st.write(f"**Day:** {event_info['Day']}")
+                        st.write(f"**Location:** {event_info['Location']}")
+                        st.write(f"**Description:** {event_info['Description']}")
                         st.write(f"**Status:** {reg['Status']}")
 
                         if st.button(f"Cancel Registration for {event_info['Event Name']}", key=f"cancel_{reg['EventID']}"):
@@ -382,7 +395,6 @@ def user_panel():
             st.write("You have no registrations.")
 
 
-
     # Messages tab
         # Messages tab
     with tabs[2]:
@@ -406,6 +418,25 @@ def user_panel():
     # Contact Admin tab
     with tabs[3]:
         st.subheader("Contact Admin 📧")
+        admin_telegram_id = "Amin18"
+        telegram_url = f"https://t.me/{admin_telegram_id}"
+
+        # Add a button to navigate to Telegram
+        st.write("If you need help, please contact the admin on Telegram.")
+        
+        # Use HTML for the button to navigate to Telegram
+        telegram_button_html = f'''
+        <a href="{telegram_url}" target="_blank">
+            <button style="background-color: #0088cc; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;">
+                Message Admin on Telegram
+            </button>
+        </a>
+        '''
+        st.markdown(telegram_button_html, unsafe_allow_html=True)
+        st.write(" ")
+        st.write(" ")
+        st.write(" Or contact admin with form")
+
         with st.form(key='contact_admin_form'):
             subject = st.text_input("Subject", key="contact_subject")
             message = st.text_area("Message", key="contact_message")

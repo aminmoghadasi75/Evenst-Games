@@ -1,1 +1,4 @@
 UserID,EventID,Status
+1,3,Registered
+3,2,Registered
+3,3,Reserve
