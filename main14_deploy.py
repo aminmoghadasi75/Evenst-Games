@@ -112,7 +112,7 @@ def login():
     password = st.text_input("Password", type="password", key="login_password")
 
     if st.button("Login", key="login_button"):
-        if username == "admin" and password == "admin": #180465
+        if username == "admin" and password == "180465": 
             st.session_state['logged_in'] = True
             st.session_state['is_admin'] = True
             st.session_state['username'] = "admin"  # Set username for admin
